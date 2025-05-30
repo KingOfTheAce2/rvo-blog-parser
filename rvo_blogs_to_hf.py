@@ -6,7 +6,7 @@ from huggingface_hub import login
 # Always flush print so GitHub Actions logs show up live
 print = lambda *args, **kwargs: __builtins__.print(*args, **kwargs, flush=True)
 
-HF_REPO = "vGassen/rvo-blogs"
+HF_REPO = "vGassen/Dutch-RVO-blogs"
 API_URL = "https://www.rvo.nl/api/v1/opendata/blogs"
 BASE_URL = "https://www.rvo.nl"
 

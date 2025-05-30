@@ -1,81 +1,77 @@
 import requests
+from bs4 import BeautifulSoup
 import json
 from datasets import Dataset
-from huggingface_hub import login
-from bs4 import BeautifulSoup
+from huggingface_hub import HfFolder
 import os
+import sys
 
+# ✅ Force Python to flush output for GitHub Actions logs
 print = lambda *args, **kwargs: __builtins__.print(*args, **kwargs, flush=True)
 
-HF_REPO = "vGassen/Dutch-RVO-blogs"
-API_URL = "https://www.rvo.nl/api/v1/opendata/blogs"
-BASE_URL = "https://www.rvo.nl"
+HF_REPO = "vGassen/rvo-blogs"
+SITEMAP_URL = "https://www.rvo.nl/sitemap/blogs/1"
 
-def fetch_rvo_blogs():
-    print("[INFO] Fetching all RVO blogs with pagination...")
-    page = 1
-    all_blogs = []
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; rvo-scraper/1.0)"}
+def fetch_blog_urls():
+    resp = requests.get(SITEMAP_URL)
+    if resp.status_code != 200:
+        raise Exception(f"Failed to fetch sitemap: {resp.status_code}")
+    soup = BeautifulSoup(resp.content, "xml")
+    return [loc.text for loc in soup.find_all("loc")]
 
-    while True:
-        url = f"{API_URL}?page={page}"
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        batch = response.json()
-
-        if not batch:
-            break
-
-        print(f"[INFO] Fetched page {page} with {len(batch)} blogs")
-        all_blogs.extend(batch)
-        page += 1
-
-    print(f"[INFO] Total blogs fetched: {len(all_blogs)}")
-    return all_blogs
-
-def extract_full_text(slug):
+def scrape_blog(url):
+    print(f"[INFO] Scraping: {url}")
     try:
-        r = requests.get(BASE_URL + slug)
+        r = requests.get(url, timeout=10)
         r.raise_for_status()
-        soup = BeautifulSoup(r.content, "html.parser")
-        article = soup.find("div", class_="rte") or soup.find("article")
-        return article.get_text(separator="\n").strip() if article else None
     except Exception as e:
-        print(f"[WARN] Failed to extract full text: {e}")
+        print(f"[WARN] Failed to fetch {url}: {e}")
         return None
 
-def clean_blog(blog):
+    page = BeautifulSoup(r.text, "html.parser")
+    title = page.find("h1")
+    date = page.find("meta", {"property": "article:published_time"})
+    article = page.find("article")
+
     return {
-        "id": blog.get("id"),
-        "title": blog.get("title"),
-        "summary": blog.get("intro"),
-        "date": blog.get("created"),
-        "url": BASE_URL + blog.get("url", ""),
-        "text": extract_full_text(blog.get("url", ""))
+        "url": url,
+        "title": title.get_text(strip=True) if title else None,
+        "date": date["content"] if date else None,
+        "text": article.get_text(separator="\n", strip=True) if article else None
     }
 
 def save_to_jsonl(data, path="rvo_blogs.jsonl"):
-    print(f"[INFO] Saving {len(data)} entries to {path}")
     with open(path, "w", encoding="utf-8") as f:
         for item in data:
-            json.dump(item, f, ensure_ascii=False)
-            f.write("\n")
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+    print(f"[INFO] Saved {len(data)} entries to {path}")
 
 def main():
     print("[INFO] Starting RVO sync...")
-    hf_token = os.getenv("HF_TOKEN")
-    if not hf_token:
-        raise ValueError("HF_TOKEN is not set")
-    login(token=hf_token)
 
-    blogs = fetch_rvo_blogs()
-    cleaned = [clean_blog(b) for b in blogs]
-    save_to_jsonl(cleaned)
+    hf_token = os.environ.get("HF_TOKEN")
+    if not hf_token:
+        raise ValueError("HF_TOKEN environment variable not set")
+    HfFolder.save_token(hf_token)
+
+    urls = fetch_blog_urls()
+    print(f"[INFO] Found {len(urls)} blog URLs")
+
+    blogs = []
+    for url in urls:
+        blog = scrape_blog(url)
+        if blog and blog["text"]:
+            blogs.append(blog)
+
+    if not blogs:
+        print("[WARN] No blogs with content were fetched. Aborting upload.")
+        return
+
+    save_to_jsonl(blogs)
 
     print("[INFO] Uploading to Hugging Face...")
     dataset = Dataset.from_json("rvo_blogs.jsonl")
     dataset.push_to_hub(HF_REPO)
-    print("[✅] Done")
 
 if __name__ == "__main__":
     main()

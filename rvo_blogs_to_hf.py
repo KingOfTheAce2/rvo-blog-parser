@@ -12,10 +12,25 @@ API_URL = "https://www.rvo.nl/api/v1/opendata/blogs"
 BASE_URL = "https://www.rvo.nl"
 
 def fetch_rvo_blogs():
-    print("[INFO] Fetching blogs from RVO API...")
-    response = requests.get(API_URL)
-    response.raise_for_status()
-    return response.json()
+    print("[INFO] Fetching all RVO blogs with pagination...")
+    page = 1
+    all_blogs = []
+
+    while True:
+        url = f"{API_URL}?page={page}"
+        response = requests.get(url)
+        response.raise_for_status()
+        batch = response.json()
+
+        if not batch:
+            break
+
+        print(f"[INFO] Fetched page {page} with {len(batch)} blogs")
+        all_blogs.extend(batch)
+        page += 1
+
+    print(f"[INFO] Total blogs fetched: {len(all_blogs)}")
+    return all_blogs
 
 def extract_full_text(slug):
     try:

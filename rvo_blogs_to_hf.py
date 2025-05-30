@@ -15,10 +15,11 @@ def fetch_blog_data():
     print("[INFO] Fetching all RVO blogs with pagination...")
     all_blogs = []
     page = 1
+    page_size = 100
 
     while True:
         print(f"[INFO] Fetching page {page}...")
-        resp = requests.get(f"{API_URL}?page={page}")
+        resp = requests.get(f"{API_URL}?page={page}&pageSize={page_size}")
         if resp.status_code != 200:
             raise Exception(f"Failed to fetch page {page}: {resp.status_code}")
         data = resp.json()

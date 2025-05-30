@@ -7,7 +7,7 @@ from datetime import datetime
 # Print with flush for GitHub logs
 print = lambda *args, **kwargs: __builtins__.print(*args, **kwargs, flush=True)
 
-HF_REPO = "vGassen/rvo-blogs"
+HF_REPO = "vGassen/Dutch-RVO-blogs"
 API_URL = "https://www.rvo.nl/api/v1/opendata/blogs"
 
 

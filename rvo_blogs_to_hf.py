@@ -1,8 +1,10 @@
 import requests
 import json
 from datasets import Dataset
+from bs4 import BeautifulSoup
 from huggingface_hub import HfApi
 from datetime import datetime
+import time
 
 # Print with flush for GitHub logs
 print = lambda *args, **kwargs: __builtins__.print(*args, **kwargs, flush=True)
@@ -32,13 +34,38 @@ def fetch_blog_data():
     return all_blogs
 
 
+def scrape_article_text(url):
+    if not url:
+        return None
+    try:
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            print(f"[WARNING] Failed to fetch article content at {url}")
+            return None
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        article = soup.find("article")
+        if not article:
+            return None
+
+        # Join all paragraph text inside article
+        text = "\n".join([p.get_text(strip=True) for p in article.find_all("p")])
+        return text.strip() if text else None
+    except Exception as e:
+        print(f"[ERROR] Exception while scraping {url}: {e}")
+        return None
+
+
 def normalize_blog(blog):
+    url = f"https://www.rvo.nl{blog.get('url')}" if blog.get("url") else None
+    article = scrape_article_text(url)
     return {
         "id": blog.get("id"),
         "title": blog.get("title"),
         "summary": blog.get("intro"),
         "date": blog.get("created"),
-        "url": f"https://www.rvo.nl{blog.get('url')}" if blog.get("url") else None,
+        "url": url,
+        "article": article,
     }
 
 
@@ -52,11 +79,17 @@ def save_to_jsonl(data, path="rvo_blogs.jsonl"):
 def main():
     print("[INFO] Starting RVO sync...")
     raw_blogs = fetch_blog_data()
-    parsed_blogs = [normalize_blog(b) for b in raw_blogs if b.get("title") and b.get("intro")]
+    parsed_blogs = []
+
+    for blog in raw_blogs:
+        if blog.get("title") and blog.get("intro"):
+            parsed = normalize_blog(blog)
+            parsed_blogs.append(parsed)
+            print(f"[INFO] Processed blog: {parsed['title']}")
+            time.sleep(0.5)  # Be polite with scraping
 
     if not parsed_blogs:
-        print("[ERROR] No valid blog data found.")
-        return
+        print("[WARNING] No valid blog data found, but continuing anyway.")
 
     save_to_jsonl(parsed_blogs)
 

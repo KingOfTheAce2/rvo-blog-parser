@@ -15,10 +15,11 @@ def fetch_rvo_blogs():
     print("[INFO] Fetching all RVO blogs with pagination...")
     page = 1
     all_blogs = []
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; rvo-scraper/1.0)"}
 
     while True:
         url = f"{API_URL}?page={page}"
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         batch = response.json()
 

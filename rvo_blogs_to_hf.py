@@ -5,7 +5,6 @@ from huggingface_hub import login
 from bs4 import BeautifulSoup
 import os
 
-# Force print flushing for GitHub Action logs
 print = lambda *args, **kwargs: __builtins__.print(*args, **kwargs, flush=True)
 
 HF_REPO = "vGassen/rvo-blogs"
@@ -16,64 +15,51 @@ def fetch_rvo_blogs():
     print("[INFO] Fetching blogs from RVO API...")
     response = requests.get(API_URL)
     response.raise_for_status()
-    data = response.json()
-    print(f"[INFO] Received {len(data)} blogs")
-    return data
+    return response.json()
 
 def extract_full_text(slug):
-    full_url = BASE_URL + slug
     try:
-        r = requests.get(full_url)
+        r = requests.get(BASE_URL + slug)
         r.raise_for_status()
         soup = BeautifulSoup(r.content, "html.parser")
-
-        # Look for content area (RVO uses class "rte" for main body)
-        article = soup.find("div", class_="rte")
-        if not article:
-            article = soup.find("article")
-        if not article:
-            print(f"[WARN] No main content found at {full_url}")
-            return None
-
-        return article.get_text(separator="\n").strip()
+        article = soup.find("div", class_="rte") or soup.find("article")
+        return article.get_text(separator="\n").strip() if article else None
     except Exception as e:
-        print(f"[WARN] Failed to extract full text from {full_url}: {e}")
+        print(f"[WARN] Failed to extract full text: {e}")
         return None
 
 def clean_blog(blog):
-    slug = blog.get("url", "")
-    full_text = extract_full_text(slug)
-
     return {
         "id": blog.get("id"),
         "title": blog.get("title"),
         "summary": blog.get("intro"),
         "date": blog.get("created"),
-        "url": BASE_URL + slug,
-        "text": full_text
+        "url": BASE_URL + blog.get("url", ""),
+        "text": extract_full_text(blog.get("url", ""))
     }
 
 def save_to_jsonl(data, path="rvo_blogs.jsonl"):
-    print(f"[INFO] Saving {len(data)} blogs to {path}")
+    print(f"[INFO] Saving {len(data)} entries to {path}")
     with open(path, "w", encoding="utf-8") as f:
         for item in data:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            json.dump(item, f, ensure_ascii=False)
+            f.write("\n")
 
 def main():
-    print("[INFO] Starting RVO blog sync...")
+    print("[INFO] Starting RVO sync...")
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:
-        raise ValueError("HF_TOKEN environment variable not set")
+        raise ValueError("HF_TOKEN is not set")
     login(token=hf_token)
 
     blogs = fetch_rvo_blogs()
-    cleaned = [clean_blog(b) for b in blogs if b.get("url")]
+    cleaned = [clean_blog(b) for b in blogs]
     save_to_jsonl(cleaned)
 
-    print("[INFO] Uploading dataset to HuggingFace...")
+    print("[INFO] Uploading to Hugging Face...")
     dataset = Dataset.from_json("rvo_blogs.jsonl")
     dataset.push_to_hub(HF_REPO)
-    print("[✅] Upload complete.")
+    print("[✅] Done")
 
 if __name__ == "__main__":
     main()

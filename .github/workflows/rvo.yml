@@ -1,9 +1,7 @@
 name: Update RVO Blogs
 
 on:
-  schedule:
-    - cron: '0 4 * * *'  # daily at 04:00 UTC
-  workflow_dispatch:
+  workflow_dispatch:  # 👈 only manual trigger
 
 jobs:
   build:

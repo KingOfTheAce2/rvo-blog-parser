@@ -26,7 +26,7 @@ jobs:
         run: python rvo_blog_sync.py
 
       - name: Upload data artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: blog-data
           path: data/rvo_blogs.jsonl

@@ -1,6 +1,8 @@
-name: Weekly RVO Blog Sync
+name: Bi-daily RVO Content Sync
 
 on:
+  schedule:
+    - cron: '0 0 */2 * *'
   workflow_dispatch:
 
 jobs:
@@ -20,11 +22,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run blog sync
-        run: python rvo_blog_sync.py
-
-      - name: Upload data artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: blog-data
-          path: data/rvo_blogs.jsonl
+      - name: Run content sync
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
+        run: python rvo_content_sync.py

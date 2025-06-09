@@ -23,8 +23,9 @@ DATA_DIR.mkdir(exist_ok=True)
 DATA_FILE = DATA_DIR / "rvo_content.jsonl"
 
 # Configure your Hugging Face dataset repo. Treat an empty environment variable
-# as if it was not provided so the default is used.
-HF_DATASET_REPO = os.environ.get("HF_DATASET_REPO") or "username/rvo-content"
+# as if it was not provided so the default is used. The default repository is
+# ``vGassen/Dutch-RVO-blogs``.
+HF_DATASET_REPO = os.environ.get("HF_DATASET_REPO") or "vGassen/Dutch-RVO-blogs"
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 

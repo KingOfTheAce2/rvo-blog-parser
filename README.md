@@ -21,7 +21,9 @@ pip install -r requirements.txt
 python rvo_content_sync.py
 ```
 
-Set the `HF_TOKEN` and optionally `HF_DATASET_REPO` environment variables to upload the data to your Hugging Face account.
+Set the `HF_TOKEN` environment variable to enable uploading to Hugging Face.
+The dataset will be pushed to `vGassen/Dutch-RVO-blogs` by default, but you can
+override this by setting the `HF_DATASET_REPO` environment variable.
 
 ## GitHub Actions
 

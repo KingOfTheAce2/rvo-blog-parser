@@ -4,7 +4,13 @@ This project gathers public content from the Dutch RVO website and publishes it 
 
 ## Structure
 
-Every item (blog, event, article, etc.) is represented by three separate dataset entries containing its title, summary and full content. Each entry is stored as JSON lines in the following format:
+Each public item from RVO is converted into one or more simple entries. For every
+source (blogs, events, news, etc.) we create a row for the title, the summary
+and the full text.  Every row only contains the URL of the item, the extracted
+text and the source name.  The dataset therefore consists of many short
+snippets rather than a single object per page.
+
+Entries are stored in a JSON Lines file with the following format:
 
 ```json
 {
@@ -17,13 +23,14 @@ Every item (blog, event, article, etc.) is represented by three separate dataset
 ## Running locally
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt  # optional: only needed for upload features
 python rvo_content_sync.py
 ```
 
 Set the `HF_TOKEN` environment variable to enable uploading to Hugging Face.
-The dataset will be pushed to `vGassen/Dutch-RVO-blogs` by default, but you can
-override this by setting the `HF_DATASET_REPO` environment variable.
+By default the data is pushed to `vGassen/Dutch-RVO-blogs`, even though it
+contains more than just blogs.  You can override the destination by setting the
+`HF_DATASET_REPO` environment variable.
 
 ## GitHub Actions
 

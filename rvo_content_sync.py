@@ -3,8 +3,13 @@ import os
 from pathlib import Path
 from typing import List, Dict
 
-import requests
-from huggingface_hub import HfApi
+import urllib.request
+from urllib.error import HTTPError, URLError
+
+try:
+    from huggingface_hub import HfApi
+except Exception:  # huggingface_hub might not be available
+    HfApi = None
 
 # Mapping of content sources to their Open Data API endpoints
 ENDPOINTS = {
@@ -30,11 +35,14 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 
 
 def fetch_items(url: str) -> List[Dict]:
-    """Fetch JSON items from the given endpoint."""
-    response = requests.get(url)
-    response.raise_for_status()
-    data = response.json()
-    # Some endpoints may nest results inside "items"
+    """Fetch JSON items from the given endpoint using urllib."""
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = json.load(response)
+    except (HTTPError, URLError) as exc:
+        raise RuntimeError(f"Request failed: {exc}") from exc
+
+    # Some endpoints may nest results inside "items" or "data"
     if isinstance(data, dict):
         return data.get("items") or data.get("data") or []
     return data
@@ -83,6 +91,10 @@ def push_to_hf() -> None:
     if not HF_TOKEN:
         print("HF_TOKEN not set; skipping upload")
         return
+    if HfApi is None:
+        print("huggingface_hub not installed; skipping upload")
+        return
+
     api = HfApi(token=HF_TOKEN)
     api.upload_file(
         path_or_fileobj=str(DATA_FILE),

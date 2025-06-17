@@ -17,7 +17,7 @@ Every item (blog, event, article, etc.) is represented by three separate dataset
 ## Running locally
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt  # optional: only needed for upload features
 python rvo_content_sync.py
 ```
 
